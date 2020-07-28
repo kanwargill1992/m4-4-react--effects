@@ -1,7 +1,9 @@
-import React from "react";
+import React, { useState, useEffect } from "react";
 import styled from "styled-components";
 import { Link } from "react-router-dom";
+import useInterval from "../hooks/use-interval.hook";
 
+import Item from "./Item";
 import cookieSrc from "../cookie.svg";
 
 const items = [
@@ -11,12 +13,52 @@ const items = [
 ];
 
 const Game = () => {
-  // TODO: Replace this with React state!
-  const numCookies = 100;
-  const purchasedItems = {
+  const [numCookies, setNumCookies] = useState(1000);
+  const [purchasedItems, setPurchasedItems] = useState({
     cursor: 0,
     grandma: 0,
     farm: 0,
+  });
+
+  useEffect(() => {
+    document.title = `${numCookies.toLocaleString(
+      "en-CA"
+    )} cookies - Cookie Clicker`;
+  }, [numCookies]);
+  useEffect(() => {
+    window.addEventListener("keydown", handleKeydown);
+    return () => window.removeEventListener("keydown", handleKeydown);
+  });
+
+  useInterval(() => {
+    const numOfGeneratedCookies = calculateCookiesPerTick(purchasedItems);
+    setNumCookies((numCookies) => numCookies + numOfGeneratedCookies);
+  }, 1000);
+
+  const calculateCookiesPerTick = (purchasedItems) => {
+    let totalCookiesPerTick = 0;
+    items.forEach(
+      (item) => (totalCookiesPerTick += purchasedItems[item.id] * item.value)
+    );
+    return totalCookiesPerTick;
+  };
+
+  const handleCookieClick = () => {
+    setNumCookies((numCookies) => numCookies + 1);
+  };
+
+  const handleItemClick = ({ id, name, cost, value }) => {
+    if (numCookies >= cost) {
+      setNumCookies((numCookies) => numCookies - cost);
+      setPurchasedItems({ ...purchasedItems, [id]: purchasedItems[id] + 1 });
+    } else {
+      window.alert(`You can't afford ${name} yet!`);
+    }
+  };
+
+  const handleKeydown = (ev) => {
+    ev.preventDefault();
+    ev.code === "Space" && handleCookieClick();
   };
 
   return (
@@ -24,23 +66,32 @@ const Game = () => {
       <GameArea>
         <Indicator>
           <Total>{numCookies} cookies</Total>
-          {/* TODO: Calcuate the cookies per second and show it here: */}
-          <strong>0</strong> cookies per second
+          <strong>{calculateCookiesPerTick(purchasedItems)}</strong> cookies per
+          second
         </Indicator>
-        <Button>
+
+        <Button onClick={handleCookieClick}>
           <Cookie src={cookieSrc} />
         </Button>
       </GameArea>
 
       <ItemArea>
         <SectionTitle>Items:</SectionTitle>
-        {/* TODO: Add <Item> instances here, 1 for each item type. */}
+        {items.map((item) => (
+          <Item
+            key={item.id}
+            name={item.name}
+            cost={item.cost}
+            value={item.value}
+            numOwned={purchasedItems[item.id]}
+            handleItemClick={() => handleItemClick(item)}
+          />
+        ))}
       </ItemArea>
       <HomeLink to="/">Return home</HomeLink>
     </Wrapper>
   );
 };
-
 const Wrapper = styled.div`
   display: flex;
   height: 100vh;
@@ -55,11 +106,9 @@ const Button = styled.button`
   background: transparent;
   cursor: pointer;
 `;
-
 const Cookie = styled.img`
   width: 200px;
 `;
-
 const ItemArea = styled.div`
   height: 100%;
   padding-right: 20px;
@@ -67,13 +116,11 @@ const ItemArea = styled.div`
   flex-direction: column;
   justify-content: center;
 `;
-
 const SectionTitle = styled.h3`
   text-align: center;
   font-size: 32px;
   color: yellow;
 `;
-
 const Indicator = styled.div`
   position: absolute;
   width: 250px;
@@ -83,17 +130,14 @@ const Indicator = styled.div`
   margin: auto;
   text-align: center;
 `;
-
 const Total = styled.h3`
   font-size: 28px;
   color: lime;
 `;
-
 const HomeLink = styled(Link)`
   position: absolute;
   top: 15px;
   left: 15px;
   color: #666;
 `;
-
 export default Game;
